@@ -87,12 +87,14 @@ def run(
     save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
     (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
 
+    print('Loading model...')
     # Load model
     device = select_device(device)
     model = DetectMultiBackend(weights, device=device, dnn=dnn, data=data, fp16=half)
     stride, names, pt = model.stride, model.names, model.pt
     imgsz = check_img_size(imgsz, s=stride)  # check image size
 
+    print('Loading data...')
     # Dataloader
     if webcam:
         view_img = check_imshow()
@@ -104,9 +106,12 @@ def run(
         bs = 1  # batch_size
     vid_path, vid_writer = [None] * bs, [None] * bs
 
+    print('Run inference...')
     # Run inference
+    print('Model warmup...')
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
+    print('starting for loop...')
     for path, im, im0s, vid_cap, s in dataset:
         t1 = time_sync()
         im = torch.from_numpy(im).to(device)
@@ -117,12 +122,14 @@ def run(
         t2 = time_sync()
         dt[0] += t2 - t1
 
+        # print('inference start...')
         # Inference
         visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
         pred = model(im, augment=augment, visualize=visualize)
         t3 = time_sync()
         dt[1] += t3 - t2
 
+        # print('non maximum suppression...')
         # NMS
         pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
         dt[2] += time_sync() - t3

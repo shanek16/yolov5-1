@@ -39,9 +39,10 @@ def ap_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir='.', names
     # Returns
         The average precision as computed in py-faster-rcnn.
     """
-
+    print('-conf: \n', -conf)
     # Sort by objectness
     i = np.argsort(-conf)
+    print('np.argsort(-conf): \n', i)
     tp, conf, pred_cls = tp[i], conf[i], pred_cls[i]
 
     # Find unique classes
@@ -87,10 +88,15 @@ def ap_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir='.', names
         plot_mc_curve(px, r, Path(save_dir) / 'R_curve.png', names, ylabel='Recall')
 
     i = smooth(f1.mean(0), 0.1).argmax()  # max F1 index
+    print('max F1 index', i)
+    input()
+    print('p: \n',p)
+    input()
     p, r, f1 = p[:, i], r[:, i], f1[:, i]
     tp = (r * nt).round()  # true positives
     fp = (tp / (p + eps) - tp).round()  # false positives
-    return tp, fp, p, r, f1, ap, unique_classes.astype(int)
+    fn = (tp / (r + eps) - tp).round()
+    return tp, fp, fn, p, r, f1, ap, unique_classes.astype(int)
 
 
 def compute_ap(recall, precision):
@@ -175,7 +181,7 @@ class ConfusionMatrix:
     def tp_fp(self):
         tp = self.matrix.diagonal()  # true positives
         fp = self.matrix.sum(1) - tp  # false positives
-        # fn = self.matrix.sum(0) - tp  # false negatives (missed detections)
+        fn = self.matrix.sum(0) - tp  # false negatives (missed detections)
         return tp[:-1], fp[:-1]  # remove background class
 
     def plot(self, normalize=True, save_dir='', names=()):
