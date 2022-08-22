@@ -14,7 +14,7 @@ val: images/valid  # val images (relative to 'path')
 test:  # test images (optional)
 
 # Classes
-nc: 10  # number of classes
+nc: 4  # number of classes
 # names: ['ladder', 'fork_lift', 'driver', 'hammer', 'spanner', 'phone', 'can', 'cigarete','person','head']  # class names
 names: ['ladder', 'fork_lift', 'person','head']  # class names
 
