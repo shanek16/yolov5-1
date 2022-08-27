@@ -39,10 +39,8 @@ def ap_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir='.', names
     # Returns
         The average precision as computed in py-faster-rcnn.
     """
-    print('-conf: \n', -conf)
     # Sort by objectness
     i = np.argsort(-conf)
-    print('np.argsort(-conf): \n', i)
     tp, conf, pred_cls = tp[i], conf[i], pred_cls[i]
 
     # Find unique classes
@@ -87,16 +85,18 @@ def ap_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir='.', names
         plot_mc_curve(px, p, Path(save_dir) / 'P_curve.png', names, ylabel='Precision')
         plot_mc_curve(px, r, Path(save_dir) / 'R_curve.png', names, ylabel='Recall')
 
-    i = smooth(f1.mean(0), 0.1).argmax()  # max F1 index
-    print('max F1 index', i)
-    input()
-    print('p: \n',p)
-    input()
-    p, r, f1 = p[:, i], r[:, i], f1[:, i]
-    tp = (r * nt).round()  # true positives
+    tp = (r * nt[:, None]).round()  # true positives
     fp = (tp / (p + eps) - tp).round()  # false positives
     fn = (tp / (r + eps) - tp).round()
-    return tp, fp, fn, p, r, f1, ap, unique_classes.astype(int)
+    far= fp/(nt.sum()*np.ones_like(tp)-tp-fn)
+    index = np.argmin(abs(far-0.001), axis=1) # index of confidence threshold of each class which FAR is closest to 0.001
+    # i = smooth(f1.mean(0), 0.1).argmax()  # max F1 index
+    p, r, f1 = np.take_along_axis(p, index[:, None], axis=1), np.take_along_axis(r, index[:, None], axis=1), np.take_along_axis(f1, index[:, None], axis=1)
+    tp = (r * nt[:, None]).round()  # true positives
+    fp = (tp / (p + eps) - tp).round()  # false positives
+    fn = (tp / (r + eps) - tp).round()
+    far= fp/(nt.sum()*np.ones_like(tp)-tp-fn)
+    return far.squeeze(), tp.squeeze(), fp.squeeze(), fn, p, r, f1, ap, unique_classes.astype(int)
 
 
 def compute_ap(recall, precision):

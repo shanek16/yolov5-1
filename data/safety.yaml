@@ -14,9 +14,10 @@ val: images/valid  # val images (relative to 'path')
 test:  # test images (optional)
 
 # Classes
-nc: 4  # number of classes
-# names: ['ladder', 'fork_lift', 'driver', 'hammer', 'spanner', 'phone', 'can', 'cigarete','person','head']  # class names
-names: ['ladder', 'fork_lift', 'person','head']  # class names
+nc: 10
+names: ['ladder', 'fork_lift', 'driver', 'hammer', 'spanner', 'phone', 'can', 'cigarete','person','head']  # class names
+# nc: 4  # number of classes
+# names: ['ladder', 'fork_lift', 'person','head']  # class names
 
 #names: ['ladder', 'fork_lift', 'cigarete', 'person', 'head', |? 'light_stick', 'signal_man']
 #names: ['safe', 'not_safe']
