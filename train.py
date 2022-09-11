@@ -347,8 +347,8 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
             ema.update_attr(model, include=['yaml', 'nc', 'hyp', 'names', 'stride', 'class_weights'])
             final_epoch = (epoch + 1 == epochs) or stopper.possible_stop
             if not noval or final_epoch:  # Calculate mAP
-                # results, maps, _ = validate.run(data_dict,
-                results, maps, _ = tar_at_far.run(data_dict,
+                results, maps, _ = validate.run(data_dict,
+                # results, maps, _ = tar_at_far.run(data_dict,
                                                 batch_size=batch_size // WORLD_SIZE * 2,
                                                 imgsz=imgsz,
                                                 half=amp,
