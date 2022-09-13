@@ -188,7 +188,7 @@ def run(
         names = dict(enumerate(names))
     class_map = coco80_to_coco91_class() if is_coco else list(range(1000))
     # s = ('%22s' + '%11s' * 6) % ('Class', 'Images', 'Instances', 'P', 'R', 'mAP@.5', 'mAP@.5:.95')
-    s = ('%22s' + '%11s' * 7) % ('Class', 'Images', 'Instances', 'P', 'R', 'FAR', 'mAP@.5', 'mAP@.5:.95')
+    s = ('%22s' + '%11s' * 9) % ('Class', 'Images', 'Instances', 'P', 'R', 'FAR', 'TP', 'FP', 'mAP@.5', 'mAP@.5:.95')
     dt, p, r, f1, mp, mr, map50, map = (Profile(), Profile(), Profile()), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
     loss = torch.zeros(3, device=device)
     jdict, stats, ap, ap_class = [], [], [], []
@@ -270,14 +270,14 @@ def run(
         far, tp, fp, fn, p, r, f1, ap, ap_class = tarfar_per_class(*stats, plot=plots, save_dir=save_dir, names=names)
         ap50, ap = ap[:, 0], ap.mean(1)  # AP@0.5, AP@0.5:0.95
         # mp, mr, map50, map = p.mean(), r.mean(), ap50.mean(), ap.mean()
-        mp, mr, mfar, map50, map = p.mean(), r.mean(), far.mean(), ap50.mean(), ap.mean()
+        mp, mr, mfar, mtp, mfp, map50, map = p.mean(), r.mean(), far.mean(), tp.mean(), fp.mean(), ap50.mean(), ap.mean()
     nt = np.bincount(stats[3].astype(int), minlength=nc)  # number of targets per class
 
     # Print results
     # pf = '%22s' + '%11i' * 2 + '%11.3g' * 4  # print format
-    pf = '%22s' + '%11i' * 2 + '%11.3g' * 5  # print format
+    pf = '%22s' + '%11i' * 2 + '%11.3g' * 7  # print format
     # LOGGER.info(pf % ('all', seen, nt.sum(), mp, mr, map50, map))
-    LOGGER.info(pf % ('all', seen, nt.sum(), mp, mr, mfar, map50, map))
+    LOGGER.info(pf % ('all', seen, nt.sum(), mp, mr, mfar, mtp, mfp, map50, map))
     if nt.sum() == 0:
         LOGGER.warning(f'WARNING: no labels found in {task} set, can not compute metrics without labels ⚠️')
 
@@ -285,7 +285,7 @@ def run(
     if (verbose or (nc < 50 and not training)) and nc > 1 and len(stats):
         for i, c in enumerate(ap_class):
             # LOGGER.info(pf % (names[c], seen, nt[c], p[i], r[i], ap50[i], ap[i]))
-            LOGGER.info(pf % (names[c], seen, nt[c], p[i], r[i], far[i], ap50[i], ap[i]))
+            LOGGER.info(pf % (names[c], seen, nt[c], p[i], r[i], far[i], tp[i], fp[i], ap50[i], ap[i]))
 
     # Print speeds
     t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
