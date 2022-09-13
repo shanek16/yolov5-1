@@ -235,8 +235,14 @@ def tarfar_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir='.', n
 
     i_low = index
     i_high = index
-    far_low=far
-    far_high=far
+    far_low = far
+    far_high = far
+    p_low = p
+    p_high = p
+    r_low = r
+    r_high = r
+    f1_low = f1
+    f1_high = f1
 
     while np.any(far_low>0.001): # while all components of far_low < 0.001
         i_low = np.where(far_low.squeeze()-0.001 > 0, i_low+1, i_low) # threshold index that makes FAR<~0.001
