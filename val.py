@@ -270,7 +270,8 @@ def run(
         far, tp, fp, fn, p, r, f1, ap, ap_class = tarfar_per_class(*stats, plot=plots, save_dir=save_dir, names=names)
         ap50, ap = ap[:, 0], ap.mean(1)  # AP@0.5, AP@0.5:0.95
         # mp, mr, map50, map = p.mean(), r.mean(), ap50.mean(), ap.mean()
-        mp, mr, mfar, mtp, mfp, map50, map = p.mean(), r.mean(), far.mean(), tp.mean(), fp.mean(), ap50.mean(), ap.mean()
+        mp, mr, mfar, mtp, mfp, map50, map = p.mean(), r.mean(), 0.001, tp.mean(), fp.mean(), ap50.mean(), ap.mean()
+        # mp, mr, mfar, mtp, mfp, map50, map = p.mean(), r.mean(), far.mean(), tp.mean(), fp.mean(), ap50.mean(), ap.mean()
     nt = np.bincount(stats[3].astype(int), minlength=nc)  # number of targets per class
 
     # Print results
@@ -285,7 +286,8 @@ def run(
     if (verbose or (nc < 50 and not training)) and nc > 1 and len(stats):
         for i, c in enumerate(ap_class):
             # LOGGER.info(pf % (names[c], seen, nt[c], p[i], r[i], ap50[i], ap[i]))
-            LOGGER.info(pf % (names[c], seen, nt[c], p[i], r[i], far[i], tp[i], fp[i], ap50[i], ap[i]))
+            LOGGER.info(pf % (names[c], seen, nt[c], p[i], r[i], 0.001, tp[i], fp[i], ap50[i], ap[i]))
+            # LOGGER.info(pf % (names[c], seen, nt[c], p[i], r[i], far[i], tp[i], fp[i], ap50[i], ap[i]))
 
     # Print speeds
     t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
