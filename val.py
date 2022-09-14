@@ -187,8 +187,8 @@ def run(
     if isinstance(names, (list, tuple)):  # old format
         names = dict(enumerate(names))
     class_map = coco80_to_coco91_class() if is_coco else list(range(1000))
-    # s = ('%22s' + '%11s' * 6) % ('Class', 'Images', 'Instances', 'P', 'R', 'mAP@.5', 'mAP@.5:.95')
-    s = ('%22s' + '%11s' * 9) % ('Class', 'Images', 'Instances', 'P', 'R', 'FAR', 'TP', 'FP', 'mAP@.5', 'mAP@.5:.95')
+    s = ('%22s' + '%11s' * 6) % ('Class', 'Images', 'Instances', 'P', 'R', 'mAP@.5', 'mAP@.5:.95')
+    # s = ('%22s' + '%11s' * 9) % ('Class', 'Images', 'Instances', 'P', 'R', 'FAR', 'TP', 'FP', 'mAP@.5', 'mAP@.5:.95')
     dt, p, r, f1, mp, mr, map50, map = (Profile(), Profile(), Profile()), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
     loss = torch.zeros(3, device=device)
     jdict, stats, ap, ap_class = [], [], [], []
@@ -266,8 +266,8 @@ def run(
     # Compute metrics
     stats = [torch.cat(x, 0).cpu().numpy() for x in zip(*stats)]  # to numpy
     if len(stats) and stats[0].any():
-        # tp, fp, p, r, f1, ap, ap_class = ap_per_class(*stats, plot=plots, save_dir=save_dir, names=names)
-        far, tp, fp, fn, p, r, f1, ap, ap_class = tarfar_per_class(*stats, plot=plots, save_dir=save_dir, names=names)
+        tp, fp, p, r, f1, ap, ap_class = ap_per_class(*stats, plot=plots, save_dir=save_dir, names=names)
+        # far, tp, fp, fn, p, r, f1, ap, ap_class = tarfar_per_class(*stats, plot=plots, save_dir=save_dir, names=names)
         ap50, ap = ap[:, 0], ap.mean(1)  # AP@0.5, AP@0.5:0.95
         # mp, mr, map50, map = p.mean(), r.mean(), ap50.mean(), ap.mean()
         mp, mr, mfar, mtp, mfp, map50, map = p.mean(), r.mean(), 0.001, tp.mean(), fp.mean(), ap50.mean(), ap.mean()
@@ -275,18 +275,18 @@ def run(
     nt = np.bincount(stats[3].astype(int), minlength=nc)  # number of targets per class
 
     # Print results
-    # pf = '%22s' + '%11i' * 2 + '%11.3g' * 4  # print format
-    pf = '%22s' + '%11i' * 2 + '%11.3g' * 7  # print format
-    # LOGGER.info(pf % ('all', seen, nt.sum(), mp, mr, map50, map))
-    LOGGER.info(pf % ('all', seen, nt.sum(), mp, mr, mfar, mtp, mfp, map50, map))
+    pf = '%22s' + '%11i' * 2 + '%11.3g' * 4  # print format
+    # pf = '%22s' + '%11i' * 2 + '%11.3g' * 7  # print format
+    LOGGER.info(pf % ('all', seen, nt.sum(), mp, mr, map50, map))
+    # LOGGER.info(pf % ('all', seen, nt.sum(), mp, mr, mfar, mtp, mfp, map50, map))
     if nt.sum() == 0:
         LOGGER.warning(f'WARNING: no labels found in {task} set, can not compute metrics without labels ⚠️')
 
     # Print results per class
     if (verbose or (nc < 50 and not training)) and nc > 1 and len(stats):
         for i, c in enumerate(ap_class):
-            # LOGGER.info(pf % (names[c], seen, nt[c], p[i], r[i], ap50[i], ap[i]))
-            LOGGER.info(pf % (names[c], seen, nt[c], p[i], r[i], 0.001, tp[i], fp[i], ap50[i], ap[i]))
+            LOGGER.info(pf % (names[c], seen, nt[c], p[i], r[i], ap50[i], ap[i]))
+            # LOGGER.info(pf % (names[c], seen, nt[c], p[i], r[i], 0.001, tp[i], fp[i], ap50[i], ap[i]))
             # LOGGER.info(pf % (names[c], seen, nt[c], p[i], r[i], far[i], tp[i], fp[i], ap50[i], ap[i]))
 
     # Print speeds
@@ -334,9 +334,8 @@ def run(
     maps = np.zeros(nc) + map
     for i, c in enumerate(ap_class):
         maps[c] = ap[i]
-    # return (mp, mr, map50, map, *(loss.cpu() / len(dataloader)).tolist()), maps, t
-    return (mp, mr, map, mfar, *(loss.cpu() / len(dataloader)).tolist()), maps, t
-
+    return (mp, mr, map50, map, *(loss.cpu() / len(dataloader)).tolist()), maps, t
+    # return (mp, mr, map, mfar, *(loss.cpu() / len(dataloader)).tolist()), maps, t
 
 def parse_opt():
     parser = argparse.ArgumentParser()
