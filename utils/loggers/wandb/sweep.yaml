@@ -25,12 +25,26 @@ parameters:
   data:
     value: "data/safety.yaml"
   batch_size:
+<<<<<<< HEAD
     values: [32]
+=======
+<<<<<<< HEAD
+    values: [32]
+  epochs:
+    value: 1
+=======
+    value: 32
+>>>>>>> 5cec7a22ffed411d05bbee4e8f3fdbb60b25a13e
   epochs:
     distribution: q_uniform
     min: 100
     max: 300
+<<<<<<< HEAD
     q: 10
+=======
+    q: 2
+>>>>>>> a728abf66af34c0a441791dbd269d16665ab7a9d
+>>>>>>> 5cec7a22ffed411d05bbee4e8f3fdbb60b25a13e
 
   lr0:
     distribution: uniform

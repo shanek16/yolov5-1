@@ -334,6 +334,10 @@ def smart_optimizer(model, name='Adam', lr=0.001, momentum=0.9, decay=1e-5):
         optimizer = torch.optim.RMSprop(g[2], lr=lr, momentum=momentum)
     elif name == 'SGD':
         optimizer = torch.optim.SGD(g[2], lr=lr, momentum=momentum, nesterov=True)
+    elif name == 'Adadelta':
+        optimizer = torch.optim.Adadelta(g[2], lr=lr)
+    elif name == 'Adagrad':
+        optimizer = torch.optim.Adagrad(g[2], lr=lr)
     else:
         raise NotImplementedError(f'Optimizer {name} not implemented.')
 

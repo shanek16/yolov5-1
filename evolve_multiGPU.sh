@@ -6,6 +6,6 @@
 # done
 
 # https://docs.ultralytics.com/tutorials/hyperparameter-evolution/
-for i in 0 1 2 3; do
+for i in 0 1; do
   nohup python train.py --epochs 10 --data safety.yaml --weights yolov5x.pt --cache --evolve --device $i > evolve_gpu_$i.log &
 done
