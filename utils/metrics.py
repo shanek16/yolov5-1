@@ -12,12 +12,12 @@ import numpy as np
 import torch
 
 from utils import TryExcept, threaded
-
+from scipy import interpolate
 
 def fitness(x):
     # Model fitness as a weighted combination of metrics
-    # w = [0.0, 0.0, 0.1, 0.9]  # weights for [P, R, mAP@0.5, mAP@0.5:0.95]
-    w = [0.0, 1.0, 0.0, 0.0]  # weights for [P, R, mAP@0.5:0.95, far0.001]
+    w = [0.0, 0.0, 0.1, 0.9]  # weights for [P, R, mAP@0.5, mAP@0.5:0.95]
+    # w = [0.0, 1.0, 0.0, 0.0]  # weights for [P, R, mAP@0.5:0.95, far0.001]
     return (x[:, :4] * w).sum(1)
 
 
@@ -184,7 +184,7 @@ def tarfar_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir='.', n
 
     # Create Precision-Recall curve and compute AP for each class
     px, py = np.linspace(0, 1, 1000), []  # for plotting
-    ap, p, r = np.zeros((nc, tp.shape[1])), np.zeros((nc, 1000)), np.zeros((nc, 1000))
+    ap, p_origin, r_origin = np.zeros((nc, tp.shape[1])), np.zeros((nc, 1000)), np.zeros((nc, 1000))
     for ci, c in enumerate(unique_classes):
         i = pred_cls == c
         n_l = nt[ci]  # number of labels
@@ -198,11 +198,11 @@ def tarfar_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir='.', n
 
         # Recall
         recall = tpc / (n_l + eps)  # recall curve
-        r[ci] = np.interp(-px, -conf[i], recall[:, 0], left=0)  # negative x, xp because xp decreases
+        r_origin[ci] = np.interp(-px, -conf[i], recall[:, 0], left=0)  # negative x, xp because xp decreases
 
         # Precision
         precision = tpc / (tpc + fpc)  # precision curve
-        p[ci] = np.interp(-px, -conf[i], precision[:, 0], left=1)  # p at pr_score
+        p_origin[ci] = np.interp(-px, -conf[i], precision[:, 0], left=1)  # p_origin at pr_score
 
         # AP from recall-precision curve
         for j in range(tp.shape[1]):
@@ -211,26 +211,65 @@ def tarfar_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir='.', n
                 py.append(np.interp(px, mrec, mpre))  # precision at mAP@0.5
 
     # Compute F1 (harmonic mean of precision and recall)
-    f1 = 2 * p * r / (p + r + eps)
+    f1_origin = 2 * p_origin * r_origin / (p_origin + r_origin + eps)
     names = [v for k, v in names.items() if k in unique_classes]  # list: only classes that have data
     names = dict(enumerate(names))  # to dict
     if plot:
         plot_pr_curve(px, py, ap, Path(save_dir) / 'PR_curve.png', names)
-        plot_mc_curve(px, f1, Path(save_dir) / 'F1_curve.png', names, ylabel='F1')
-        plot_mc_curve(px, p, Path(save_dir) / 'P_curve.png', names, ylabel='Precision')
-        plot_mc_curve(px, r, Path(save_dir) / 'R_curve.png', names, ylabel='Recall')
+        plot_mc_curve(px, f1_origin, Path(save_dir) / 'F1_curve.png', names, ylabel='F1')
+        plot_mc_curve(px, p_origin, Path(save_dir) / 'P_curve.png', names, ylabel='Precision')
+        plot_mc_curve(px, r_origin, Path(save_dir) / 'R_curve.png', names, ylabel='Recall')
 
-    tp = (r * nt[:, None]).round()  # true positives
-    fp = (tp / (p + eps) - tp).round()  # false positives
-    fn = (tp / (r + eps) - tp).round()
+    tp = (r_origin * nt[:, None]).round()  # true positives
+    fp = (tp / (p_origin + eps) - tp).round()  # false positives
+    fn = (tp / (r_origin + eps) - tp).round()
     far= fp/(nt.sum()*np.ones_like(tp)-tp-fn)
     index = np.argmin(abs(far-0.001), axis=1) # index of confidence threshold of each class which FAR is closest to 0.001
-    # i = smooth(f1.mean(0), 0.1).argmax()  # max F1 index
-    p, r, f1 = np.take_along_axis(p, index[:, None], axis=1), np.take_along_axis(r, index[:, None], axis=1), np.take_along_axis(f1, index[:, None], axis=1)
+
+    # metrics at threshold: FAR~0.001
+    p, r, f1 = np.take_along_axis(p_origin, index[:, None], axis=1), np.take_along_axis(r_origin, index[:, None], axis=1), np.take_along_axis(f1_origin, index[:, None], axis=1)
     tp = (r * nt[:, None]).round()  # true positives
     fp = (tp / (p + eps) - tp).round()  # false positives
     fn = (tp / (r + eps) - tp).round()
     far= fp/(nt.sum()*np.ones_like(tp)-tp-fn)
+
+    i_low = index
+    i_high = index
+    far_low = far
+    far_high = far
+    p_low = p
+    p_high = p
+    r_low = r
+    r_high = r
+    f1_low = f1
+    f1_high = f1
+
+    while np.any(far_low>0.001): # while all components of far_low < 0.001
+        i_low = np.where(far_low.squeeze()-0.001 > 0, i_low+1, i_low) # threshold index that makes FAR<~0.001
+        # metric computed with threshold index that makes FAR<~0.001
+        p_low, r_low, f1_low = np.take_along_axis(p_origin, i_low[:, None], axis=1), np.take_along_axis(r_origin, i_low[:, None], axis=1), np.take_along_axis(f1_origin, i_low[:, None], axis=1)
+        tp_low = (r_low * nt[:, None]).round()  # true positives
+        fp_low = (tp_low / (p_low + eps) - tp_low).round()  # false positives
+        fn_low = (tp_low / (r_low + eps) - tp_low).round()
+        far_low= fp_low/(nt.sum()*np.ones_like(tp_low)-tp_low-fn_low)
+
+
+    while np.any(far_high<0.001): # while all components of far_high > 0.001
+        i_high = np.where(far_high.squeeze()-0.001 < 0, i_high-1, i_high) # threshold index that makes FAR>~0.001
+        # metric computed with threshold index that makes FAR>~0.001
+        p_high, r_high, f1_high = np.take_along_axis(p_origin, i_high[:, None], axis=1), np.take_along_axis(r_origin, i_high[:, None], axis=1), np.take_along_axis(f1_origin, i_high[:, None], axis=1)
+        tp_high = (r_high * nt[:, None]).round()  # true positives
+        fp_high = (tp_high / (p_high + eps) - tp_high).round()  # false positives
+        fn_high = (tp_high / (r_high + eps) - tp_high).round()
+        far_high= fp_high/(nt.sum()*np.ones_like(tp_high)-tp_high-fn_high)
+
+    # interpolate so that we have p,r,f1 @ threshold far=0.001
+    p = np.array([np.interp(0.001, [far_low.squeeze()[i], far_high.squeeze()[i]], [p_low.squeeze()[i], p_high.squeeze()[i]]) for i in range(np.size(far_low.squeeze()))])
+    r = np.array([np.interp(0.001, [far_low.squeeze()[i], far_high.squeeze()[i]], [r_low.squeeze()[i], r_high.squeeze()[i]]) for i in range(np.size(far_low.squeeze()))])
+    f1 = np.array([np.interp(0.001, [far_low.squeeze()[i], far_high.squeeze()[i]], [f1_low.squeeze()[i], f1_high.squeeze()[i]]) for i in range(np.size(far_low.squeeze()))])
+
+    #returns far,tp,fp,fn of the closest index to far=0.001,
+    #        interpolated p,r,f1 @ far=0.001
     return far.squeeze(), tp.squeeze(), fp.squeeze(), fn, p, r, f1, ap, unique_classes.astype(int)
 
 
